@@ -16,7 +16,6 @@
 * **Danh mục Động:** Người dùng có thể tự tạo danh mục mới với Icon và Màu sắc tùy ý ngay trong lúc nhập liệu.
 * **Dashboard Trực quan:** Hiển thị tổng số dư, danh sách giao dịch gần nhất.
 * **Báo cáo Thống kê:**
-    * Biểu đồ cột (Bar Chart) so sánh Tổng Thu vs Tổng Chi.
     * Biểu đồ tròn (Pie Chart) phân tích cơ cấu chi tiêu.
 * **Lưu trữ Offline:** Dữ liệu được lưu an toàn trong máy người dùng (SQLite), không cần Internet.
 
