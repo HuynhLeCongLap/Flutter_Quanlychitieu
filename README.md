@@ -4,9 +4,9 @@
 
 ## 📸 Demo Giao Diện
 
-*(Chèn ảnh chụp màn hình ứng dụng vào thư mục `screenshots` và dẫn link vào đây nếu có)*
+*( vào đây nếu có)*
 
-| Dashboard | Thêm Giao Dịch | Báo Cáo |
+| Dashboard | Thêm GiaChèn ảnh chụp màn hình ứng dụng vào thư mục `screenshots` và dẫn linko Dịch | Báo Cáo |
 |:---:|:---:|:---:|
 | ![Dashboard](https://via.placeholder.com/200x400?text=Dashboard) | ![Add Transaction](https://via.placeholder.com/200x400?text=Add+Form) | ![Report](https://via.placeholder.com/200x400?text=Report) |
 
@@ -46,3 +46,6 @@ Mở Terminal (hoặc Git Bash) và chạy lệnh:
 ```bash
 git clone <https://github.com/1-ITer7Nghiep/Flutter_CK_Quanlychitieu>
 cd quan_ly_chi_tieu
+flutter pub get
+flutter run
+
