@@ -33,7 +33,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       length: 2, // 2 Tab: Chi và Thu
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Quản Lý Danh Mộc'),
+          title: const Text('Quản Lý Danh Mục'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           bottom: const TabBar(
             tabs: [
@@ -211,6 +211,7 @@ class CategoryListTab extends StatefulWidget {
 
 class _CategoryListTabState extends State<CategoryListTab> {
   List<Category> _list = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -222,63 +223,146 @@ class _CategoryListTabState extends State<CategoryListTab> {
   @override
   void didUpdateWidget(covariant CategoryListTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _loadData();
+    if (oldWidget.isExpense != widget.isExpense) {
+      _loadData();
+    }
   }
 
   void _loadData() async {
+    setState(() => _isLoading = true);
     final maps = await AppDatabase.instance.getCategories(widget.isExpense);
-    setState(() {
-      _list = maps.map((e) => Category.fromMap(e)).toList();
-    });
+    if (mounted) {
+      setState(() {
+        _list = maps.map((e) => Category.fromMap(e)).toList();
+        _isLoading = false;
+      });
+    }
   }
 
-  void _delete(int id) async {
-    await AppDatabase.instance.deleteCategory(id);
-    _loadData();
+  void _delete(int id, String catName) async {
+    try {
+      print('🗑️ Bắt đầu xóa danh mục ID: $id');
+      final result = await AppDatabase.instance.deleteCategory(id);
+      print('✅ Kết quả xóa: $result row(s) affected');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã xóa danh mục "$catName" và các giao dịch liên quan'), duration: const Duration(seconds: 2))
+        );
+        
+        // Reload danh sách danh mục
+        _loadData();
+        
+        // Quay lại Dashboard và trigger refresh
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        });
+      }
+    } catch (e) {
+      print('❌ Lỗi xóa: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi xóa: $e'), backgroundColor: Colors.red, duration: const Duration(seconds: 3))
+        );
+      }
+    }
+  }
+
+  void _showDeleteConfirmDialog(int catId, String catName) async {
+    // Kiểm tra số lượng giao dịch
+    final transactionCount = await AppDatabase.instance.getTransactionCountByCategory(catId);
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận xóa danh mục'),
+        content: transactionCount > 0
+            ? Text(
+                'Danh mục "$catName" có $transactionCount giao dịch.\n\n'
+                '⚠️ Xóa danh mục sẽ xóa luôn tất cả $transactionCount giao dịch này!\n\n'
+                'Bạn có chắc chắn muốn tiếp tục?',
+                style: const TextStyle(fontSize: 15),
+              )
+            : Text('Bạn có chắc chắn muốn xóa danh mục "$catName"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _delete(catId, catName);
+            },
+            child: const Text('Xóa', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_list.isEmpty) return const Center(child: Text("Chưa có danh mục nào"));
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     
-    return ListView.builder(
-      itemCount: _list.length,
-      itemBuilder: (context, index) {
-        final cat = _list[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Color(cat.colorValue).withOpacity(0.2),
-              child: Icon(IconData(cat.iconCode, fontFamily: 'MaterialIcons'), color: Color(cat.colorValue)),
+    if (_list.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.category_outlined, size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            const Text("Chưa có danh mục nào", style: TextStyle(fontSize: 16, color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+    
+    return RefreshIndicator(
+      onRefresh: () async => _loadData(),
+      child: ListView.builder(
+        itemCount: _list.length,
+        itemBuilder: (context, index) {
+          final cat = _list[index];
+          final catColor = Color(cat.colorValue);
+          return Dismissible(
+            key: ValueKey(cat.id),
+            background: Container(
+              color: Colors.red.shade400,
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              child: const Icon(Icons.delete, color: Colors.white),
             ),
-            title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.grey),
-              onPressed: () {
-                // Hỏi trước khi xóa
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Xác nhận xóa'),
-                    content: const Text('Lưu ý: Xóa danh mục sẽ xóa luôn các giao dịch thuộc danh mục này!'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Hủy')),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                          _delete(cat.id!);
-                        },
-                        child: const Text('Xóa', style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
-                  ),
-                );
-              },
+            direction: DismissDirection.endToStart,
+            onDismissed: (direction) {
+              _showDeleteConfirmDialog(cat.id!, cat.name);
+            },
+            confirmDismiss: (direction) async {
+              return false; // Dialog sẽ được xử lý bằng _showDeleteConfirmDialog
+            },
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: catColor.withOpacity(0.2),
+                  child: Icon(IconData(cat.iconCode, fontFamily: 'MaterialIcons'), color: catColor, size: 24),
+                ),
+                title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(widget.isExpense ? 'Chi tiêu' : 'Thu nhập', style: TextStyle(color: Colors.grey.shade600)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () {
+                    _showDeleteConfirmDialog(cat.id!, cat.name);
+                  },
+                ),
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

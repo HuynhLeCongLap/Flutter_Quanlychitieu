@@ -126,13 +126,32 @@ class AppDatabase {
     return await db.insert(tableCategory, row);
   }
 
-  // 2. Xóa danh mục
+  // 2. Xóa danh mục (và tất cả giao dịch liên quan)
   Future<int> deleteCategory(int id) async {
     Database db = await instance.database;
-    // Chú ý: Khi xóa category, các Transaction thuộc category đó sẽ bị lỗi khóa ngoại.
-    // Thực tế nên dùng "Soft Delete" (ẩn đi), nhưng ở đây ta xóa luôn transaction liên quan cho sạch.
-    await db.delete(tableTransaction, where: '$colTransCatId = ?', whereArgs: [id]);
-    return await db.delete(tableCategory, where: '$colCatId = ?', whereArgs: [id]);
+    
+    try {
+      // Bước 1: Xóa tất cả giao dịch thuộc danh mục này
+      final deletedTransactions = await db.delete(
+        tableTransaction, 
+        where: '$colTransCatId = ?', 
+        whereArgs: [id]
+      );
+      print('✅ Đã xóa $deletedTransactions giao dịch');
+      
+      // Bước 2: Xóa danh mục
+      final deletedCategory = await db.delete(
+        tableCategory, 
+        where: '$colCatId = ?', 
+        whereArgs: [id]
+      );
+      print('✅ Đã xóa danh mục (rows affected: $deletedCategory)');
+      
+      return deletedCategory;
+    } catch (e) {
+      print('❌ Lỗi deleteCategory: $e');
+      rethrow;
+    }
   }
 
   // Hàm cập nhật giao dịch
@@ -148,6 +167,16 @@ class AppDatabase {
   }
 
   // --- Thêm vào cuối class DatabaseHelper ---
+
+  // Lấy số lượng giao dịch của một danh mục
+  Future<int> getTransactionCountByCategory(int categoryId) async {
+    Database db = await instance.database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM $tableTransaction WHERE $colTransCatId = ?',
+      [categoryId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
 
   // Hàm tính tổng tiền chi tiêu theo danh mục
   // Trả về List gồm: Tên danh mục, Tổng tiền, Màu sắc, Icon

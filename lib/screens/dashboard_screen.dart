@@ -101,6 +101,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('Sổ Thu Chi'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          // Nút Quản Lý Danh Mục (MỚI)
+          IconButton(
+            icon: const Icon(Icons.category),
+            tooltip: 'Quản lý danh mục',
+            onPressed: () async {
+              // Khi quay lại từ CategoryManagementScreen thì refresh data
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CategoryManagementScreen())
+              );
+              // Reload khi quay lại
+              _refreshData();
+            },
+          ),
           // Nút xem Báo cáo (MỚI THÊM)
           IconButton(
             icon: const Icon(Icons.pie_chart), // Icon hình biểu đồ bánh
